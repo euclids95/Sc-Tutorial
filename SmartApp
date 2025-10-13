@@ -1,0 +1,128 @@
+import tkinter as tk
+from tkinter import *
+from tkinter import messagebox as mb
+import wolframalpha
+
+# Replace with your Wolfram Alpha App ID
+APP_ID = "My ID is Secret" # Enter your ID here in order to work
+
+# Initialize the client
+client = wolframalpha.Client(APP_ID)
+
+# Query Wolfram Alpha
+def query_wolfram(query):
+    url = "https://api.wolframalpha.com/v2/query"
+    params = {
+        "input": query,
+        "appid": APP_ID,
+        "format": "plaintext"
+    }
+
+    try:
+        response = requests.get(url, params=params, timeout=10)
+        if response.status_code != 200:
+            return f"⚠️ HTTP Error {response.status_code}: {response.reason}"
+
+        root = ET.fromstring(response.text)
+        for pod in root.findall(".//pod[@title='Result']"):
+            text = pod.find("subpod/plaintext")
+            if text is not None and text.text:
+                return text.text.strip()
+
+        return "⚠️ No direct result found."
+
+    except requests.exceptions.SSLError:
+        return "❌ SSL Error: Unable to verify certificate."
+    except Exception as e:
+        return f"🚨 Error: {e}"
+
+
+def help1():
+    mb.showinfo('My Smart App','Euclid')
+
+# When user presses Send button
+def send_message():
+    user_input = entry.get()
+    if not user_input.strip():
+        return
+
+    chat_box.config(state='normal')
+    chat_box.insert(tk.END, f"You: {user_input}\n")
+    entry.delete(0, tk.END)
+    response = query_wolfram(user_input)
+
+    chat_box.insert(tk.END, f"Bot: {response}\n\n")
+    chat_box.config(state='disabled')
+    chat_box.yview(tk.END)
+
+
+# GUI window
+window = tk.Tk()
+window.title("Smart Knowledge Assistant")
+window.config(bg='#132440')
+window.geometry("500x500")
+window.resizable(width=False, height=False)
+
+# Create widgets in correct order
+
+menubar = Menu(window)
+menubar.add_command(label='Help',command=help1)
+menubar.add_command(label='Exit',command=window.destroy)
+window.config(menu=menubar)
+chat_box = scrolledtext.ScrolledText(
+    window,
+    wrap=tk.WORD,
+    state='disabled',
+    bg='#16476A',  # same color as background
+    fg='#3B9797',
+    font=('Arial', 11),
+    borderwidth=0,
+    relief=tk.FLAT
+)
+
+# Apply padding when placing the widget
+title = tk.Label(
+    window,
+    text='Smart Knowledge Assistant',
+    font=('Arial', 14),
+    fg='#F5EDED',
+    bg='#132440'
+)
+title.place(relx=0.5, y=10, anchor='n')  # Center horizontally at top
+
+
+chat_box.config(spacing1=5, spacing3=5)  # spacing1 = before line, spacing3 = after line
+chat_box.place(x=10, y=60, width=480, height=300)
+
+
+entry_frame = tk.Frame(window)
+entry_frame.place(x=10, y=450, width=440)  # Adjust width manually
+
+entry = tk.Entry(entry_frame, font=('Arial', 12),bg='#132440', fg='#3B9797')
+entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
+entry.bind("<Return>", lambda event: send_message())
+
+placeholder = "Ask me anything..."
+entry.insert(0, placeholder)
+entry.config(fg='#C7C8CC')  # faded color for placeholder
+
+def on_entry_click(event):
+    if entry.get() == placeholder:
+        entry.delete(0, "end")  # remove placeholder
+        entry.config(fg='#3B9797', bg='#132440')  # normal text color
+
+def on_focusout(event):
+    if entry.get() == '':
+        entry.insert(0, placeholder)
+        entry.config(fg='#5A8BA0')
+
+entry.bind('<FocusIn>', on_entry_click)
+entry.bind('<FocusOut>', on_focusout)
+
+send_button = tk.Button(entry_frame, text="Send", command=send_message)
+send_button.pack(side=tk.RIGHT)
+
+exit_button = Button(window,text='Exit', font = ('Arial',10),fg='white',activeforeground='white',bg='red',command=window.destroy)
+exit_button.place(x=450,y=450)
+
+window.mainloop()
